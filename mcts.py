@@ -63,8 +63,8 @@ class MCTS():
         for i, move in enumerate(node.state.legal_moves):
             state = copy.deepcopy(node.state)
             state.push(move)
-            child = Node(state, node, move)
-            node.addChild(child, probs[i])
+            child = Node(state, node)
+            node.addChild(child, probs[i], move)
     
     
         
