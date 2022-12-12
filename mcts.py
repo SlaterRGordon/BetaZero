@@ -4,9 +4,8 @@ from node import Node
 from utils import stateEncoder, policyDecoder, resultConvert
 
 class MCTS():
-    def __init__(self, nn, lock):
+    def __init__(self, nn):
         self.nn = nn
-        self.lock = lock
         
     def search(self, node, iterations):
         root = node

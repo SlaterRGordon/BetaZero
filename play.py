@@ -53,7 +53,7 @@ class SelfPlay():
         self.model.save('bestModel.h5')
     
     def simulate(self, root):
-        mcts = MCTS(self.model, self.lock)
+        mcts = MCTS(self.model)
         node = root
         
         examples = []
@@ -75,6 +75,20 @@ class SelfPlay():
         
         return examples
     
+    def addToData(self, state, policy, result):
+        policy = policyEncoder(policy, state.legal_moves)
+        state = stateEncoder(state)
+        result = np.array(result)
+        
+        self.data.append([state, policy, result])
+        
+    def pickMove(self, state, iterations):
+        mcts = MCTS(self.model)
+        node = Node(state, None)
+        child = mcts.search(node, iterations)
+        
+        return child
+        
     # def generateData(self, root):
     #     results = Queue()
     #     def simulate(model, root):
@@ -115,15 +129,5 @@ class SelfPlay():
     #     # Get the results from the queue
     #     for _ in range(results.qsize()):
     #         for example in results.get():
-    #             self.addToData(example[1], example[2], example[3])
-                    
+    #             self.addToData(example[1], example[2], example[3])        
     
-    def addToData(self, state, policy, result):
-        policy = policyEncoder(policy, state.legal_moves)
-        state = stateEncoder(state)
-        result = np.array(result)
-        
-        self.data.append([state, policy, result])
-        
-            
-        
