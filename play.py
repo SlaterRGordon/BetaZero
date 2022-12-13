@@ -1,12 +1,11 @@
 import chess
-from tqdm import tqdm
 import numpy as np
-import multiprocessing as mp
 from mcts import MCTS
 from node import Node
 from utils import stateEncoder, policyEncoder, resultConvert
-import threading
 from queue import Queue
+import threading
+import multiprocessing as mp
 
 class SelfPlay():
     def __init__(self, model, num_simulations=1000):
@@ -15,59 +14,75 @@ class SelfPlay():
         state = chess.Board()
         self.node = Node(state, None)
         self.data = []
-        self.lock = threading.Lock()
         
     def runSimulations(self):
+        # initialize the root of the simulation tree
         root = self.node
+        
+        # run the specified number of simulations
         for i in range(self.num_simulations):
-            print("Generating Data")
+            
+            # generate examples from the simulations
             examples = self.simulate(root)
             for example in examples:
                 self.addToData(example[1], example[2], example[3])
-            # self.generateData(root)
-            print("Training Model")
+                
+            # train the model with the generated data
             self.train(32)
             
     def train(self, batchSize):
+        # initialize list to store losses
         losses = []
         
-        print(len(self.data))
-        
+        # iterate over the data in batches
         for i in range(0, len(self.data), batchSize):
+            # unpack the data into states, policies, and values
             states, policies, values = map(list, zip(*self.data[i:i + batchSize]))
             
+            # reshape the states into a 4D tensor
             states = np.reshape(np.array(states), (-1, 8, 8, 17))
+            
+            # convert the policies and values to numpy arrays
             policies = np.array(policies)
             values = np.reshape(np.array(values), (-1, 1))
             
+            # train the model with the data
             labels = {'policy': policies, 'value': values}
             history = self.model.fit(states, labels)
             losses += [history.history['loss']]
+            
+            # print the loss for the current batch
             print("Batch {}: {}".format(i, history.history['loss']))
         
+        # print the mean loss for all batches
         print("Total: {}".format(np.mean(losses)))
-        self.data = []
-        self.saveModel()
         
-    def saveModel(self):
+        # reset the training data and save model
+        self.data = []
         self.model.save('bestModel.h5')
     
     def simulate(self, root):
+        # initialize mcts and root node
         mcts = MCTS(self.model)
         node = root
         
+        # initialize list to store examples
         examples = []
         
-        while not node.state.is_game_over() and node.depth < 300:
-            # Run MCTS to find the best child for the current node
+        # continue searching until the game is over or the maximum depth is reached
+        while not node.state.is_game_over() and node.depth < 200:
+            # Run mcts to find the best child for the current node
             node = mcts.search(node, 5)
+            
+            # add the node to the list of examples
             examples.append([node, node.state, None, None])
-
+        
         if node.state.is_game_over():
             result = resultConvert[node.state.result()] * node.color * -1
         else:
             result = -1
         
+        # set the policy and value for each example
         for example in examples:
             example[3] = result
             result = result * -1
@@ -76,6 +91,7 @@ class SelfPlay():
         return examples
     
     def addToData(self, state, policy, result):
+        # encode policy and state to a format that the model recognizes
         policy = policyEncoder(policy, state.legal_moves)
         state = stateEncoder(state)
         result = np.array(result)
@@ -91,33 +107,9 @@ class SelfPlay():
         
     # def generateData(self, root):
     #     results = Queue()
-    #     def simulate(model, root):
-    #         with self.lock:
-    #             mcts = MCTS(model, self.lock)
-    #             node = root
-                
-    #             examples = []
-                
-    #             while not node.state.is_game_over() and node.depth < 300:
-    #                 # Run MCTS to find the best child for the current node
-    #                 node = mcts.search(node, 5)
-    #                 examples.append([node, node.state, None, None])
-    #                 print(node.depth)
-
-    #         if node.state.is_game_over():
-    #             result = resultConvert[node.state.result()] * node.color * -1
-    #         else:
-    #             result = -1
-            
-    #         for example in examples:
-    #             example[3] = result
-    #             result = result * -1
-    #             example[2] = example[0].getActualProbabilities()
-            
-    #         results.put(examples)
         
     #     num_threads = mp.cpu_count() // 2
-    #     threads = [threading.Thread(target=simulate, args=(), kwargs={'model': self.model, 'root': root}) for _ in range(num_threads)]
+    #     threads = [threading.Thread(target=self.simulate, args=(), kwargs={'self': self, 'model': self.model, 'root': root}) for _ in range(num_threads)]
         
     #     # Start the threads
     #     for thread in threads:
