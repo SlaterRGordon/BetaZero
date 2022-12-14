@@ -74,7 +74,7 @@ class SelfPlay():
         for thread in threads:
             thread.start()
             
-        for thread in threads:
+        for i, thread in enumerate(threads):
             thread.join()
             
         # end timer
@@ -132,9 +132,11 @@ class SelfPlay():
         self.data.append([state, policy, result])
         
     def pickMove(self, state, iterations):
-        mcts = MCTS(self.model)
+        mcts = MCTS(self.model, self.lock)
         node = Node(state, None)
         child = mcts.search(node, iterations)
+        index = np.argmax(child.parent.probs)
+        child = child.parent.children[index]
         
         return child     
     

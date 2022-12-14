@@ -12,16 +12,15 @@ class MCTS():
         root = node
         
         for i in range(iterations):
-            with self.lock:
-                # select a leaf node
-                current = root
-                while current.expanded:
-                    current = self.select(current)
-                
-                # check if the game has ended
-                if current.state.is_game_over():
-                    current.backpropagate(resultConvert[current.state.result()])
-                    break
+            # select a leaf node
+            current = root
+            while current.expanded:
+                current = self.select(current)
+            
+            # check if the game has ended
+            if current.state.is_game_over():
+                current.backpropagate(resultConvert[current.state.result()])
+                break
             
             # evaluate node
             encodedState = stateEncoder(current.state)
@@ -36,12 +35,11 @@ class MCTS():
             prob_factor = 1 / sumProbs
             probs = [prob_factor * p for p in probs]
             
-            with self.lock:
-                # expand leaf node
-                self.expand(current, probs)
-                        
-                # backpropogate
-                current.backpropagate(value[0][0])
+            # expand leaf node
+            self.expand(current, probs)
+                    
+            # backpropogate
+            current.backpropagate(value[0][0])
         
         # pick child based on policy probs
         index = np.random.choice(len(root.probs), p=root.probs)
